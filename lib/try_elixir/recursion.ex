@@ -46,5 +46,23 @@ defmodule TryElixir.Recursion do
     end
   end
 
-  def sort
+  def sort([]), do: []
+  def sort([e]), do: [e]
+
+  def sort(list) do
+    split_number = Enum.count(list) |> div(2)
+    {list_a, list_b} = Enum.split(list, split_number)
+    sort_merge(sort(list_a), sort(list_b))
+  end
+
+  def sort_merge([], list), do: list
+  def sort_merge(list, []), do: list
+
+  def sort_merge([head_a | tail_a] = list_a, [head_b | tail_b] = list_b) do
+    if head_a < head_b do
+      [head_a | sort_merge(tail_a, list_b)]
+    else
+      [head_b | sort_merge(list_a, tail_b)]
+    end
+  end
 end

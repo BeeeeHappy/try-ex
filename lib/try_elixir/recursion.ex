@@ -1,4 +1,33 @@
 defmodule TryElixir.Recursion do
+  # tail recursion
+  def factorial(n), do: factorial(n, 1)
+  def factorial(0, acc), do: acc
+  def factorial(n, acc), do: factorial(n - 1, acc * n)
+
+  # capture named function
+  def anonymous_factorial_1(n), do: (&factorial/1).(n)
+
+  # body recursion
+  def anonymous_factorial_2(n) do
+    f = fn
+      0, _f -> 1
+      x, f -> x * f.(x - 1, f)
+    end
+
+    f.(n, f)
+  end
+
+  # tail recursion
+  def anonymous_factorial_3(n) do
+    f = fn
+      {x, f} -> f.({x, 1, f})
+      {0, acc, _f} -> acc
+      {x, acc, f} -> f.({x - 1, acc * x, f})
+    end
+
+    f.({n, f})
+  end
+
   def map([], _f), do: []
   def map([head | tail], f), do: [f.(head) | map(tail, f)]
 

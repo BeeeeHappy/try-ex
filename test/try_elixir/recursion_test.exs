@@ -10,6 +10,22 @@ defmodule TryElixir.RecursionTest do
     }
   end
 
+  test "factorial" do
+    assert Recursion.factorial(5) == 120
+  end
+
+  test "anonymous_factorial_1" do
+    assert Recursion.anonymous_factorial_1(5) == 120
+  end
+
+  test "anonymous_factorial_2" do
+    assert Recursion.anonymous_factorial_2(5) == 120
+  end
+
+  test "anonymous_factorial_3" do
+    assert Recursion.anonymous_factorial_3(5) == 120
+  end
+
   test "map", %{ordered_list: ordered_list} do
     assert Recursion.map(ordered_list, fn e -> e * e end) == [1, 4, 9, 16, 25]
   end

@@ -14,6 +14,14 @@ defmodule TryElixir.RecursionTest do
     assert Recursion.factorial(5) == 120
   end
 
+  test "factorial_lazy_1" do
+    assert Recursion.factorial_lazy_1(5) == 120
+  end
+
+  test "factorial_lazy_2" do
+    assert Recursion.factorial_lazy_2(5) == 120
+  end
+
   test "anonymous_factorial_1" do
     assert Recursion.anonymous_factorial_1(5) == 120
   end

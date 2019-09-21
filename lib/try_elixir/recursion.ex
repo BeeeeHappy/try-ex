@@ -4,6 +4,24 @@ defmodule TryElixir.Recursion do
   def factorial(0, acc), do: acc
   def factorial(n, acc), do: factorial(n - 1, acc * n)
 
+  # factorial with limit lazy data structure
+  def factorial_lazy_1(0), do: 1
+
+  def factorial_lazy_1(n) do
+    1..10000
+    |> Enum.take(n)
+    |> Enum.reduce(1, &(&1 * &2))
+  end
+
+  # factorial with unlimit lazy way
+  def factorial_lazy_2(0), do: 1
+
+  def factorial_lazy_2(n) do
+    Stream.iterate(1, &(&1 + 1))
+    |> Enum.take(n)
+    |> Enum.reduce(1, &(&1 * &2))
+  end
+
   # capture named function
   def anonymous_factorial_1(n), do: (&factorial/1).(n)
 

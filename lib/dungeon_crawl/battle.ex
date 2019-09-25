@@ -21,12 +21,14 @@ defmodule DungeonCrawl.Battle do
     damage = Enum.random(char_a.damage_range)
     char_b_after_damage = Character.take_damage(char_b, damage)
 
-    Process.sleep 1000
+    Process.sleep(1000)
+
     char_a
     |> attack_message(damage)
     |> Shell.info()
-    
-    Process.sleep 1000
+
+    Process.sleep(1000)
+
     char_b_after_damage
     |> receive_message(damage)
     |> Shell.info()

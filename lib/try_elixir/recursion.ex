@@ -112,4 +112,11 @@ defmodule TryElixir.Recursion do
       [head_b | sort_merge(list_a, tail_b)]
     end
   end
+
+  def flatten([]), do: []
+  def flatten([head | tail]), do: flatten(tail, flatten(head))
+  def flatten(element), do: [element]
+  def flatten([], acc), do: acc
+  def flatten([head | tail], acc) when is_list(head), do: flatten(tail, acc ++ flatten(head))
+  def flatten([head | tail], acc), do: flatten(tail, acc ++ [head])
 end

@@ -61,4 +61,8 @@ defmodule TryElixir.RecursionTest do
   test "sort", %{unordered_list: unordered_list, ordered_list: ordered_list} do
     assert Recursion.sort(unordered_list) == ordered_list
   end
+
+  test "flatten" do
+    assert Recursion.flatten([1,[2,[3,4],5],6]) == [1,2,3,4,5,6]
+  end
 end

@@ -63,6 +63,6 @@ defmodule TryElixir.RecursionTest do
   end
 
   test "flatten" do
-    assert Recursion.flatten([1,[2,[3,4],5],6]) == [1,2,3,4,5,6]
+    assert Recursion.flatten([1, [2, [3, 4], 5], 6]) == [1, 2, 3, 4, 5, 6]
   end
 end

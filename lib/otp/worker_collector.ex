@@ -2,15 +2,27 @@ defmodule WorkerCollector do
   def call([], _f), do: []
 
   def call(list, f) do
-    collector = spawn()
+    collector =
+      spawn(
+        WorkerCollector.Collector,
+        :loop,
+        [self(), Enum.count(list)]
+      )
+
     map(list, f, collector)
-    receive_r
+    receive_r()
   end
 
   defp map([], _f, _collector), do: []
 
   defp map([head | tail], f, collector) do
-    worker = spawn
+    worker =
+      spawn(
+        WorkerCollector.Worker,
+        :start,
+        [collector, head, f]
+      )
+
     send(worker, {head, f})
     map(tail, f, collector)
   end

@@ -2,7 +2,7 @@ defmodule WorkerCollectorG do
   def call([], _f), do: []
 
   def call(list, f) do
-    collector = WorkerCollector.Collector.start(self(), Enun.count(list))
+    {:ok, collector} = WorkerCollectorG.Collector.start_link(self(), Enum.count(list))
     map(list, f, collector)
     receive_r()
   end
@@ -10,14 +10,8 @@ defmodule WorkerCollectorG do
   defp map([], _f, _collector), do: []
 
   defp map([head | tail], f, collector) do
-    worker =
-      spawn(
-        WorkerCollector.Worker,
-        :start,
-        [collector, head, f]
-      )
-
-    send(worker, {head, f})
+    {:ok, worker} = WorkerCollectorG.Worker.start_link(collector)
+    WorkerCollectorG.Worker.do_it(worker, head, f)
     map(tail, f, collector)
   end
 
@@ -33,26 +27,41 @@ defmodule WorkerCollectorG do
   end
 end
 
-defmodule WorkerCollector.Worker do
-  def start(collector, e, f) do
-    v = f.(e)
-    send(collector, {:ok, v})
+defmodule WorkerCollectorG.Worker do
+  use GenServer
+
+  def start_link(collector) do
+    GenServer.start_link(__MODULE__, collector, [])
+  end
+
+  def do_it(worker, e, f) do
+    GenServer.cast(worker, {:do_it, e, f})
+  end
+
+  def init(collector) do
+    {:ok, collector}
+  end
+
+  def handle_cast({:do_it, e, f}, collector) do
+    WorkerCollectorG.Collector.collect(collector, {:ok, f.(e)})
+    {:stop, :normal, collector}
+  end
+
+  def terminate(reason, _collector) do
+    IO.puts("terminate worker with reason(#{reason})")
+    :ok
   end
 end
 
-defmodule WorkerCollector.Collector do
+defmodule WorkerCollectorG.Collector do
   use GenServer
 
-  def start(pid, count, r \\ []) do
-    GenServer.start(%{pid: pid, count: count, r: r})
+  def start_link(pid, count, r \\ []) do
+    GenServer.start_link(__MODULE__, %{pid: pid, count: count, r: r}, [])
   end
 
   def collect(collector, {:ok, v}) do
     GenServer.cast(collector, {:collect, v})
-  end
-
-  def collect(collector, :error) do
-    :invalid_value
   end
 
   def init(state) do
@@ -74,9 +83,9 @@ defmodule WorkerCollector.Collector do
   end
 
   def terminate(reason, %{pid: pid, r: r}) do
+    IO.puts("collector terminate (#{reason})")
     sorted_r = r |> Enum.sort()
     send(pid, {:ok, sorted_r})
     :ok
   end
 end
-

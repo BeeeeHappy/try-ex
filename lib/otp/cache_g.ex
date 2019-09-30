@@ -49,6 +49,3 @@ defmodule Otp.CacheG do
     {:noreply, %{}}
   end
 end
-
-
-

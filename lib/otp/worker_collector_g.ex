@@ -1,8 +1,8 @@
-defmodule WorkerCollectorG do
+defmodule Otp.WorkerCollectorG do
   def call([], _f), do: []
 
   def call(list, f) do
-    {:ok, collector} = WorkerCollectorG.Collector.start_link(self(), Enum.count(list))
+    {:ok, collector} = Otp.WorkerCollectorG.Collector.start_link(self(), Enum.count(list))
     map(list, f, collector)
     receive_r()
   end
@@ -10,8 +10,8 @@ defmodule WorkerCollectorG do
   defp map([], _f, _collector), do: []
 
   defp map([head | tail], f, collector) do
-    {:ok, worker} = WorkerCollectorG.Worker.start_link(collector)
-    WorkerCollectorG.Worker.do_it(worker, head, f)
+    {:ok, worker} = Otp.WorkerCollectorG.Worker.start_link(collector)
+    Otp.WorkerCollectorG.Worker.do_it(worker, head, f)
     map(tail, f, collector)
   end
 
@@ -27,7 +27,7 @@ defmodule WorkerCollectorG do
   end
 end
 
-defmodule WorkerCollectorG.Worker do
+defmodule Otp.WorkerCollectorG.Worker do
   use GenServer
 
   def start_link(collector) do
@@ -43,7 +43,7 @@ defmodule WorkerCollectorG.Worker do
   end
 
   def handle_cast({:do_it, e, f}, collector) do
-    WorkerCollectorG.Collector.collect(collector, {:ok, f.(e)})
+    Otp.WorkerCollectorG.Collector.collect(collector, {:ok, f.(e)})
     {:stop, :normal, collector}
   end
 
@@ -53,7 +53,7 @@ defmodule WorkerCollectorG.Worker do
   end
 end
 
-defmodule WorkerCollectorG.Collector do
+defmodule Otp.WorkerCollectorG.Collector do
   use GenServer
 
   def start_link(pid, count, r \\ []) do

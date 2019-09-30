@@ -1,10 +1,10 @@
-defmodule WorkerCollector do
+defmodule Otp.WorkerCollector do
   def call([], _f), do: []
 
   def call(list, f) do
     collector =
       spawn(
-        WorkerCollector.Collector,
+        Otp.WorkerCollector.Collector,
         :loop,
         [self(), Enum.count(list)]
       )
@@ -18,7 +18,7 @@ defmodule WorkerCollector do
   defp map([head | tail], f, collector) do
     worker =
       spawn(
-        WorkerCollector.Worker,
+        Otp.WorkerCollector.Worker,
         :start,
         [collector, head, f]
       )
@@ -39,14 +39,14 @@ defmodule WorkerCollector do
   end
 end
 
-defmodule WorkerCollector.Worker do
+defmodule Otp.WorkerCollector.Worker do
   def start(collector, e, f) do
     v = f.(e)
     send(collector, {:ok, v})
   end
 end
 
-defmodule WorkerCollector.Collector do
+defmodule Otp.WorkerCollector.Collector do
   def loop(pid, count, r \\ []) do
     new_r =
       receive do

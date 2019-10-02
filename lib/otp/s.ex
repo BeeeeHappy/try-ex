@@ -41,6 +41,7 @@ defmodule Otp.S do
       {:ok, child} ->
         new_state = Map.put(state, child, child_spec)
         {:reply, {:ok, child}, new_state}
+
       :error ->
         {:reply, {:error, "error starting child"}, state}
     end
@@ -51,6 +52,7 @@ defmodule Otp.S do
       :ok ->
         new_state = Map.delete(state, child)
         {:reply, :ok, new_state}
+
       :error ->
         {:reply, {:error, "error terminating child"}, state}
     end
@@ -65,10 +67,13 @@ defmodule Otp.S do
               state
               |> Map.delete(child)
               |> Map.put(new_child, child_spec)
+
             {:reply, {:ok, new_child}, new_state}
+
           :error ->
             {:reply, {:error, "error restarting child"}, state}
         end
+
       :error ->
         {:reply, :ok, state}
     end
@@ -101,10 +106,13 @@ defmodule Otp.S do
               state
               |> Map.delete(child)
               |> Map.put(new_child, child_spec)
+
             {:noreply, new_state}
+
           :error ->
             {:noreply, state}
         end
+
       _ ->
         {:noreply, state}
     end
@@ -116,10 +124,12 @@ defmodule Otp.S do
   end
 
   defp start_children([]), do: []
+
   defp start_children([child_spec | tail]) do
     case start_child(child_spec) do
       {:ok, child} ->
         [{child, child_spec} | start_children(tail)]
+
       :error ->
         :error
     end
@@ -130,17 +140,17 @@ defmodule Otp.S do
       child when is_pid(child) ->
         Process.link(child)
         {:ok, child}
+
       _ ->
         :error
     end
   end
 
   defp terminate_children(%{}), do: :ok
+
   defp terminate_children(state) do
     state
-    |> Enum.each(
-        fn {child, _} -> terminate_child(child) end
-      )    
+    |> Enum.each(fn {child, _} -> terminate_child(child) end)
   end
 
   defp terminate_child(child) do
@@ -154,9 +164,11 @@ defmodule Otp.S do
         case start_child(child_spec) do
           {:ok, new_child} ->
             {:ok, new_child, child_spec}
+
           :error ->
             :error
         end
+
       :error ->
         :error
     end

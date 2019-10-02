@@ -1,8 +1,6 @@
-defmodule Otp.S do
-  use GenServer
-
+defmodule Otp.S.Client do
   def start_link(child_spec_list) do
-    GenServer.start_link(__MODULE__, child_spec_list)
+    GenServer.start_link(Otp.S.Server, child_spec_list)
   end
 
   def start_child(supervisor, child_spec) do
@@ -13,8 +11,8 @@ defmodule Otp.S do
     GenServer.call(supervisor, {:terminate_child, child})
   end
 
-  def restart_child(supervisor, child, child_spec) when is_pid(child) do
-    GenServer.call(supervisor, {:restart_child, child, child_spec})
+  def restart_child(supervisor, child) when is_pid(child) do
+    GenServer.call(supervisor, {:restart_child, child})
   end
 
   def count_children(supervisor) do
@@ -24,6 +22,10 @@ defmodule Otp.S do
   def which_children(supervisor) do
     GenServer.call(supervisor, :which_children)
   end
+end
+
+defmodule Otp.S.Server do
+  use GenServer
 
   def init(child_spec_list) do
     Process.flag(:trap_exit, true)
@@ -58,11 +60,11 @@ defmodule Otp.S do
     end
   end
 
-  def handle_call({:restart_child, child, child_spec}, _from, state) do
+  def handle_call({:restart_child, child}, _from, state) do
     case Map.fetch(state, child) do
       {:ok, child_spec} ->
         case restart_child(child, child_spec) do
-          {:ok, {new_child, child_spec}} ->
+          {:ok, new_child, child_spec} ->
             new_state =
               state
               |> Map.delete(child)
@@ -101,7 +103,7 @@ defmodule Otp.S do
     case Map.fetch(state, child) do
       {:ok, child_spec} ->
         case restart_child(child, child_spec) do
-          {:ok, new_child} ->
+          {:ok, new_child, child_spec} ->
             new_state =
               state
               |> Map.delete(child)
@@ -149,8 +151,7 @@ defmodule Otp.S do
   defp terminate_children(%{}), do: :ok
 
   defp terminate_children(state) do
-    state
-    |> Enum.each(fn {child, _} -> terminate_child(child) end)
+    Enum.each(state, fn {child, _} -> terminate_child(child) end)
   end
 
   defp terminate_child(child) do
@@ -170,6 +171,29 @@ defmodule Otp.S do
         end
 
       :error ->
+        :error
+    end
+  end
+end
+
+defmodule Otp.S.Worker do
+  def start(state) do
+    spawn(fn -> loop(state) end)
+  end
+
+  defp loop(state) do
+    receive do
+      {:write, k, v} ->
+        new_state = Map.put(state, k, v)
+        IO.puts(:ok)
+        loop(new_state)
+
+      {:read, k} ->
+        Map.get(state, k) |> IO.puts()
+        loop(state)
+
+      _ ->
+        loop(state)
         :error
     end
   end

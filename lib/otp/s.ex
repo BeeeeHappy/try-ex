@@ -1,5 +1,5 @@
 defmodule Otp.S.Client do
-  def start_link(child_spec_list) do
+  def start_link(child_spec_list) when is_list(child_spec_list) do
     GenServer.start_link(Otp.S.Server, child_spec_list)
   end
 
@@ -139,7 +139,7 @@ defmodule Otp.S.Server do
 
   defp start_child({m, f, a}) do
     case apply(m, f, a) do
-      child when is_pid(child) ->
+      {:ok, child} when is_pid(child) ->
         Process.link(child)
         {:ok, child}
 
@@ -171,29 +171,6 @@ defmodule Otp.S.Server do
         end
 
       :error ->
-        :error
-    end
-  end
-end
-
-defmodule Otp.S.Worker do
-  def start(state) do
-    spawn(fn -> loop(state) end)
-  end
-
-  defp loop(state) do
-    receive do
-      {:write, k, v} ->
-        new_state = Map.put(state, k, v)
-        IO.puts(:ok)
-        loop(new_state)
-
-      {:read, k} ->
-        Map.get(state, k) |> IO.puts()
-        loop(state)
-
-      _ ->
-        loop(state)
         :error
     end
   end

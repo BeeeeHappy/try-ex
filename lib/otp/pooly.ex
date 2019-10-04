@@ -11,7 +11,7 @@ defmodule Otp.Pooly do
   end
 
   def checkout do
-    Otp.Pooly.Server.checkout
+    Otp.Pooly.Server.checkout()
   end
 
   def checkin(worker_pid) do
@@ -19,7 +19,7 @@ defmodule Otp.Pooly do
   end
 
   def status do
-    Otp.Pooly.Server.status
+    Otp.Pooly.Server.status()
   end
 end
 
@@ -93,12 +93,17 @@ defmodule Otp.Pooly.Server do
     {:reply, {length(workers), :ets.info(monitors, :size)}, state}
   end
 
-  def handle_call(:checkout, {from_pid, _ref}, %State{workers: workers, monitors: monitors} = state) do
+  def handle_call(
+        :checkout,
+        {from_pid, _ref},
+        %State{workers: workers, monitors: monitors} = state
+      ) do
     case workers do
       [worker | rest] ->
         ref = Process.monitor(from_pid)
         true = :ets.insert(monitors, {worker, ref})
         {:reply, worker, %{state | workers: rest}}
+
       [] ->
         {:reply, :noproc, state}
     end
@@ -110,6 +115,7 @@ defmodule Otp.Pooly.Server do
         true = Process.demonitor(ref)
         true = :ets.delete(monitors, worker)
         {:noreply, %{state | workers: [worker | workers]}}
+
       [] ->
         {:noreply, state}
     end

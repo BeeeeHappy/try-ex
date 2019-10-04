@@ -11,6 +11,7 @@ defmodule Otp.A do
     children = [
       {Otp.Worker, [state]}
     ]
+
     Supervisor.start_link(children, strategy: :one_for_one)
   end
 end

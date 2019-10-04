@@ -2,7 +2,7 @@ defmodule Otp.S.A do
   use Application
 
   def start(_t, _a) do
-    Otp.S.Top.start_link
+    Otp.S.Top.start_link()
   end
 end
 

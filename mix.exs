@@ -15,7 +15,10 @@ defmodule TryElixir.MixProject do
   # Run "mix help compile.app" to learn about applications.
   def application do
     [
-      extra_applications: [:logger]
+      extra_applications: [:logger],
+      mod: {Otp.Pooly, []},
+      # mod: {Otp.A, [%{foo: "bar"}]},
+      # mod: {Otp.S.A, []}
     ]
   end
 

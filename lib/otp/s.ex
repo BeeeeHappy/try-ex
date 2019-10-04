@@ -1,3 +1,42 @@
+defmodule Otp.S.A do
+  use Application
+
+  def start(_t, _a) do
+    Otp.S.Top.start_link
+  end
+end
+
+defmodule Otp.S.Top do
+  use Supervisor
+
+  def start_link do
+    Supervisor.start_link(__MODULE__, :ok, name: __MODULE__)
+  end
+
+  def start_child do
+    Supervisor.start_child(__MODULE__, Otp.S.Child)
+  end
+
+  def init(:ok) do
+    Supervisor.init([], strategy: :one_for_all)
+  end
+end
+
+defmodule Otp.S.Child do
+  use Supervisor
+
+  def start_link(_) do
+    Supervisor.start_link(__MODULE__, :ok, name: __MODULE__)
+  end
+
+  def init(:ok) do
+    children = [Otp.Worker]
+    Supervisor.init(children, strategy: :one_for_all)
+  end
+end
+
+##
+
 defmodule Otp.S.Client do
   def start_link(child_spec_list) when is_list(child_spec_list) do
     GenServer.start_link(Otp.S.Server, child_spec_list)

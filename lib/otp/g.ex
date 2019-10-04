@@ -21,7 +21,7 @@ defmodule Otp.G do
     {:ok, stack}
   end
 
-  def handle_call(:stack, from, stack) do
+  def handle_call(:stack, _from, stack) do
     {:reply, stack, stack}
   end
 

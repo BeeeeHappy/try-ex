@@ -1,75 +1,147 @@
-# Q: What happens when you kill the WorkerSupervisor process in Observer?
-#    Can you explain why that happens?
-
-defmodule Otp.Pooly do
+defmodule Otp.PoolyNew do
   use Application
 
   def start(_type, _args) do
-    pool_config = [worker_mod: Otp.Worker, size: 5]
-    start_pool(pool_config)
+    pools_config = [
+      [name: "Pool_1", worker_mod: Otp.Worker, size: 2],
+      [name: "Pool_1", worker_mod: Otp.Worker, size: 3],
+      [name: "Pool_1", worker_mod: Otp.Worker, size: 4]
+    ]
+    start_pools(pools_config)
   end
 
-  def start_pool(pool_config) do
+  def start_pools(pools_config) do
     Otp.Pooly.Supervisor.start_link(pool_config)
   end
 
-  def checkout do
-    Otp.Pooly.Server.checkout()
+  def checkout(pool_name) do
+    Otp.Pooly.Server.checkout(pool_name)
   end
 
-  def checkin(worker_pid) do
-    Otp.Pooly.Server.checkin(worker_pid)
+  def checkin(pool_name, worker_pid) do
+    Otp.Pooly.Server.checkin(pool_name, worker_pid)
   end
 
-  def status do
-    Otp.Pooly.Server.status()
+  def status(pool_name) do
+    Otp.Pooly.Server.status(pool_name)
   end
 end
 
 defmodule Otp.Pooly.Supervisor do
   use Supervisor
 
-  def start_link(pool_config) do
-    Supervisor.start_link(__MODULE__, pool_config)
+  def start_link(pools_config) do
+    Supervisor.start_link(__MODULE__, pools_config, name: __MODULE__)
   end
 
-  def init(pool_config) do
-    children = [{Otp.Pooly.Server, {self(), pool_config}}]
+  def init(pools_config) do
+    children = [
+      Otp.Pooly.PoolsSupervisor,
+      {Otp.Pooly.Server, pools_config}
+    ]
     Supervisor.init(children, strategy: :one_for_all)
+  end
+end
+
+defmodule Otp.Pooly.PoolsSupervisor do
+  use Supervisor
+
+  def start_link(_) do
+    Supervisor.start_link(__MODULE__, [], name: __MODULE__)
+  end
+
+  def init(_) do
+    Supervisor.init([], strategy: :one_for_one)
   end
 end
 
 defmodule Otp.Pooly.Server do
   use GenServer
 
+  def start_link(pools_config) do
+    GenServer.start_link(__MODULE__, pools_config, name: __MODULE__)
+  end
+
+  def checkout(pool_name) do
+    GenServer.call(:"#{pool_name}Server", :checkout)
+  end
+
+  def checkin(pool_name, worker_pid) do
+    GenServer.cast(:"#{pool_name}Server", {:checkin, worker_pid})
+  end
+
+  def status(pool_name) do
+    GenServer.call(:"#{pool_name}Server", :status)
+  end
+
+  def init(pools_config) do
+    pools_config |> Enum.each(fn(pool_config) ->
+      send(self, {:start_pool, pool_config})
+    end)
+
+    {:ok, pools_config}
+  end
+
+  def handle_info({:start_pool, pool_config}, state) do
+    [name: name, worker_mod: worker_mod, size: size] = pool_config
+    name = :"#{pool_config[:name]}Supervisor"
+    child_spec = Supervisor.child_spec({worker_mod, {name, size}}, id: name)
+    {:ok, _pool_sup} = Supervisor.start_child(Otp.Pooly.PoolsSupervisor, {worker_mod, [name, size]})
+    {:noreply, state}
+  end
+end
+
+defmodule Otp.Pooly.PoolSupervisor do
+  use Supervisor
+
+  def start_link({name, size} = pool_config) do
+    Supervisor.start_link(__MODULE__, pool_config, name: name) 
+  end
+
+  def init(pool_config) do
+    children = [
+      {Otp.Pooly.PoolServer, pool_config}
+    ]
+
+    opt = [
+      strategy: :one_for_all
+    ]
+
+    Supervisor.init(children, opt)
+  end
+end
+
+defmodule Otp.Pooly.PoolServer do
+  use GenServer
+  
   defmodule State do
-    defstruct [:sup, :size, :worker_mod, :worker_sup, :workers, :monitors]
+    defstruct [:pool_sup, :worker_sup, :size, :name, :worker_mod, :workers, :monitors]
   end
 
-  def start_link({sup, pool_config}) do
-    GenServer.start_link(__MODULE__, {sup, pool_config}, name: __MODULE__)
+  def start_link({pool_sup, {name, size} = pool_config}) do
+    GenServer.start_link(__MODULE__, {pool_sup, pool_config}, name: name(name))
   end
 
-  def state do
-    GenServer.call(__MODULE__, :state)
+  def state(pool_name) do
+    GenServer.call(name(pool_name), :state)
   end
 
-  def status do
-    GenServer.call(__MODULE__, :status)
+  def status(pool_name) do
+    GenServer.call(name(pool_name), :status)
   end
 
-  def checkout do
-    GenServer.call(__MODULE__, :checkout)
+  def checkout(pool_name) do
+    GenServer.call(name(pool_name), :checkout)
   end
 
-  def checkin(worker) do
-    GenServer.cast(__MODULE__, {:checkin, worker})
+  def checkin(pool_name, worker) do
+    GenServer.cast(name(pool_name), {:checkin, worker})
   end
 
-  def init({sup, pool_config}) when is_pid(sup) do
+  def init({pool_sup, pool_config}) when is_pid(pool_sup) do
     Process.flag(:trap_exit, true)
     monitors = :ets.new(:monitors, [:private])
-    init(pool_config, %State{sup: sup, monitors: monitors})
+    init(pool_config, %State{pool_sup: pool_sup, monitors: monitors})
   end
 
   def init([{:worker_mod, worker_mod} | tail], state) do
@@ -126,10 +198,10 @@ defmodule Otp.Pooly.Server do
   end
 
   def handle_info(:start_worker_supervisor, state) do
-    %State{sup: sup, worker_mod: worker_mod, size: size} = state
+    %State{pool_sup: pool_sup, worker_mod: worker_mod, name: name, size: size} = state
 
     worker_sup_spec = Otp.Pooly.WorkerSupervisor.child_spec([])
-    {:ok, worker_sup} = Supervisor.start_child(sup, worker_sup_spec)
+    {:ok, worker_sup} = Supervisor.start_child(name, worker_sup_spec)
     workers = prepopulate(size, {worker_sup, worker_mod})
 
     {:noreply, %{state | worker_sup: worker_sup, workers: workers}}
@@ -156,6 +228,10 @@ defmodule Otp.Pooly.Server do
       [[]] ->
         {:noreply, state}
     end
+  end
+
+  defp name(pool_name) do
+    :"#{pool_name}Server"
   end
 
   defp prepopulate(size, sup_worker), do: prepopulate(size, sup_worker, [])
